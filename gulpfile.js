@@ -108,7 +108,9 @@ gulp.task('styles', function () {
     pipeline = pipeline.pipe(sourcemaps.init());
   }
 
-  pipeline = pipeline.pipe(sass())
+  pipeline = pipeline.pipe(sass({
+      includePaths: ['./node_modules/bootstrap-sass/assets/stylesheets']
+    }))
     .on('error', handleError)
     .pipe(prefix('last 2 versions', 'Chrome 34', 'Firefox 28', 'iOS 7'));
 
