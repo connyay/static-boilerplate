@@ -22,7 +22,10 @@ var runSequence = require('run-sequence');
 var production = process.env.NODE_ENV === 'production';
 
 var config = {
-  base: (!production ? '/' : '/static-boilerplate/'),
+  base: {
+    dev: '/',
+    production: '/static-boilerplate/'
+  },
   destination: './public',
   scripts: {
     source: './src/js/main.js',
@@ -78,11 +81,12 @@ gulp.task('scripts', function () {
 });
 
 gulp.task('templates', function () {
+  var base = (production ? config.base.production : config.base.dev);
   var pipeline = gulp.src(config.templates.source)
     .pipe(jade({
       pretty: !production,
       locals: {
-        base: config.base
+        base: base
       }
     }))
     .on('error', handleError)
