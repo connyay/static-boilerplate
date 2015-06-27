@@ -6,8 +6,9 @@ html
     meta(http-equiv='X-UA-Compatible', content='IE=edge')
     meta(name='viewport', content='width=device-width, initial-scale=1')
     title #{title} | Boilerplate
-    link(rel='stylesheet', href='/css/style.css')
+    base(href="#{base}")
+    link(rel='stylesheet', href='css/style.css')
   body
     include ../_includes/navbar.jade
     block content
-    script(src='/js/bundle.js')
+    script(src='js/bundle.js')

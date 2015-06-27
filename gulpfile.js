@@ -16,10 +16,13 @@ var streamify = require('gulp-streamify');
 var sass = require('gulp-sass');
 var uglify = require('gulp-uglify');
 var watchify = require('watchify');
+var ghPages = require('gulp-gh-pages');
+var runSequence = require('run-sequence');
 
 var production = process.env.NODE_ENV === 'production';
 
 var config = {
+  base: (!production ? '/' : '/static-boilerplate/'),
   destination: './public',
   scripts: {
     source: './src/js/main.js',
@@ -61,28 +64,31 @@ function handleError(err) {
   return this.emit('end');
 }
 
-gulp.task('scripts', function() {
+gulp.task('scripts', function () {
   var pipeline = browserify(browserifyConfig)
     .bundle()
     .on('error', handleError)
     .pipe(source(config.scripts.filename));
 
-  if(production) {
+  if (production) {
     pipeline = pipeline.pipe(streamify(uglify()));
   }
 
   return pipeline.pipe(gulp.dest(config.scripts.destination));
 });
 
-gulp.task('templates', function() {
+gulp.task('templates', function () {
   var pipeline = gulp.src(config.templates.source)
-  .pipe(jade({
-    pretty: !production
-  }))
-  .on('error', handleError)
-  .pipe(gulp.dest(config.templates.destination));
+    .pipe(jade({
+      pretty: !production,
+      locals: {
+        base: config.base
+      }
+    }))
+    .on('error', handleError)
+    .pipe(gulp.dest(config.templates.destination));
 
-  if(production) {
+  if (production) {
     return pipeline;
   }
 
@@ -91,24 +97,24 @@ gulp.task('templates', function() {
   }));
 });
 
-gulp.task('styles', function() {
+gulp.task('styles', function () {
   var pipeline = gulp.src(config.styles.source);
 
-  if(!production) {
+  if (!production) {
     pipeline = pipeline.pipe(sourcemaps.init());
   }
 
   pipeline = pipeline.pipe(sass())
-  .on('error', handleError)
-  .pipe(prefix('last 2 versions', 'Chrome 34', 'Firefox 28', 'iOS 7'));
+    .on('error', handleError)
+    .pipe(prefix('last 2 versions', 'Chrome 34', 'Firefox 28', 'iOS 7'));
 
-  if(!production) {
+  if (!production) {
     pipeline = pipeline.pipe(sourcemaps.write('.'));
   }
 
   pipeline = pipeline.pipe(gulp.dest(config.styles.destination));
 
-  if(production) {
+  if (production) {
     return pipeline;
   }
 
@@ -117,12 +123,12 @@ gulp.task('styles', function() {
   }));
 });
 
-gulp.task('assets', function() {
+gulp.task('assets', function () {
   return gulp.src(config.assets.source)
     .pipe(gulp.dest(config.assets.destination));
 });
 
-gulp.task('server', function() {
+gulp.task('server', function () {
   return browserSync({
     open: false,
     port: 9001,
@@ -132,29 +138,42 @@ gulp.task('server', function() {
   });
 });
 
-gulp.task('watch', function() {
+gulp.task('watch', function () {
   gulp.watch(config.templates.watch, ['templates']);
   gulp.watch(config.styles.watch, ['styles']);
   gulp.watch(config.assets.watch, ['assets']);
 
   var bundle = watchify(browserify(browserifyConfig));
 
-  bundle.on('update', function() {
+  bundle.on('update', function () {
     var build = bundle.bundle()
       .on('error', handleError)
       .pipe(source(config.scripts.filename));
 
     build.pipe(gulp.dest(config.scripts.destination))
-    .pipe(duration('Rebundling browserify bundle'))
-    .pipe(browserSync.reload({stream: true}));
+      .pipe(duration('Rebundling browserify bundle'))
+      .pipe(browserSync.reload({
+        stream: true
+      }));
   }).emit('update');
 });
 
 var buildTasks = ['templates', 'styles', 'scripts', 'assets'];
 
-gulp.task('build', function() {
+gulp.task('build', function () {
   rimraf.sync(config.destination);
-  gulp.start(buildTasks.concat(['scripts']));
+  return gulp.start(buildTasks);
+});
+
+gulp.task('push', function () {
+  return gulp.src(config.destination + '/**/*')
+    .pipe(ghPages());
+});
+
+gulp.task('deploy', function () {
+  production = true;
+  rimraf.sync(config.destination);
+  runSequence(['templates', 'styles', 'scripts', 'assets'], 'push');
 });
 
 gulp.task('default', buildTasks.concat(['watch', 'server']));
